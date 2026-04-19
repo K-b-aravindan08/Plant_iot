@@ -1,0 +1,701 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>Plant IoT — Smart Watering Dashboard</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns@3.0.0/dist/chartjs-adapter-date-fns.bundle.min.js"></script>
+<style>
+/* ══════════════════════════════════════════════════════════════
+   RESET & TOKENS
+══════════════════════════════════════════════════════════════ */
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#080e0a;--surf:#0f1a11;--surf2:#152019;--border:#1e3322;
+  --text:#e8f5e9;--muted:#6b8f71;--accent:#4caf50;--dk:#1b5e20;
+  --blue:#42a5f5;--red:#ef5350;--yellow:#ffd54f;--teal:#26c6da;
+  --orange:#ff8a65;--purple:#ab47bc;
+  --r:12px;--r-sm:8px;
+  --glow:0 0 24px rgba(76,175,80,.18);
+  --card-bg:linear-gradient(145deg,#0f1a11,#122016);
+  --nav-h:64px;
+}
+html{scroll-behavior:smooth}
+body{font-family:'Segoe UI',system-ui,sans-serif;background:var(--bg);color:var(--text);
+     min-height:100vh;overflow-x:hidden}
+
+/* ══════════════════════════════════════════════════════════════
+   NAV
+══════════════════════════════════════════════════════════════ */
+nav{
+  position:fixed;top:0;left:0;right:0;z-index:200;
+  height:var(--nav-h);
+  background:rgba(8,14,10,.92);
+  backdrop-filter:blur(16px);
+  border-bottom:1px solid var(--border);
+  display:flex;align-items:center;padding:0 20px;gap:0;
+}
+.nav-logo{display:flex;align-items:center;gap:10px;text-decoration:none;
+          flex-shrink:0;margin-right:auto}
+.nav-logo .leaf{font-size:1.7rem;animation:sway 3s ease-in-out infinite}
+@keyframes sway{0%,100%{transform:rotate(-5deg)}50%{transform:rotate(5deg)}}
+.nav-logo .brand{display:flex;flex-direction:column;line-height:1.1}
+.nav-logo .brand-name{font-size:1rem;font-weight:700;color:var(--accent);letter-spacing:.5px}
+.nav-logo .brand-sub{font-size:.62rem;color:var(--muted);letter-spacing:1px;text-transform:uppercase}
+
+.nav-links{display:flex;align-items:center;gap:2px}
+.nav-link{
+  display:flex;align-items:center;gap:6px;
+  padding:8px 14px;border-radius:var(--r-sm);
+  font-size:.78rem;font-weight:600;color:var(--muted);
+  text-decoration:none;cursor:pointer;border:none;background:none;
+  transition:color .2s,background .2s;white-space:nowrap;
+}
+.nav-link:hover,.nav-link.active{color:var(--accent);background:rgba(76,175,80,.1)}
+.nav-link .ni{font-size:1rem}
+
+.nav-right{display:flex;align-items:center;gap:10px;margin-left:16px;flex-shrink:0}
+.live-pill{
+  display:flex;align-items:center;gap:6px;
+  background:rgba(76,175,80,.08);border:1px solid rgba(76,175,80,.25);
+  border-radius:20px;padding:5px 12px;font-size:.72rem;color:var(--accent);
+}
+.live-dot{
+  width:8px;height:8px;border-radius:50%;background:var(--accent);
+  box-shadow:0 0 0 0 rgba(76,175,80,.5);
+  animation:livePulse 2s infinite;
+}
+.live-dot.offline{background:var(--red);animation:none;box-shadow:none}
+@keyframes livePulse{
+  0%{box-shadow:0 0 0 0 rgba(76,175,80,.6)}
+  70%{box-shadow:0 0 0 8px rgba(76,175,80,0)}
+  100%{box-shadow:0 0 0 0 rgba(76,175,80,0)}
+}
+.last-update-badge{
+  font-size:.65rem;color:var(--muted);
+  background:var(--surf2);border:1px solid var(--border);
+  border-radius:6px;padding:4px 10px;
+  display:flex;align-items:center;gap:5px;
+}
+.last-update-badge .ts{color:var(--accent);font-weight:600;font-variant-numeric:tabular-nums}
+
+.portal-btn{
+  display:flex;align-items:center;gap:6px;
+  background:linear-gradient(135deg,var(--dk),var(--accent));
+  border:none;border-radius:var(--r-sm);
+  padding:7px 14px;font-size:.75rem;font-weight:700;color:#fff;
+  cursor:pointer;text-decoration:none;transition:opacity .2s;
+}
+.portal-btn:hover{opacity:.88}
+
+.hamburger{display:none;background:none;border:none;color:var(--text);
+           font-size:1.4rem;cursor:pointer;padding:4px}
+
+/* Mobile nav */
+@media(max-width:768px){
+  .nav-links{
+    display:none;flex-direction:column;gap:4px;
+    position:fixed;top:var(--nav-h);left:0;right:0;
+    background:rgba(8,14,10,.97);padding:16px;
+    border-bottom:1px solid var(--border);
+  }
+  .nav-links.open{display:flex}
+  .hamburger{display:block}
+  .last-update-badge{display:none}
+}
+
+/* ══════════════════════════════════════════════════════════════
+   PAGE BODY
+══════════════════════════════════════════════════════════════ */
+.page{
+  max-width:1440px;margin:0 auto;
+  padding:calc(var(--nav-h) + 24px) 20px 48px;
+}
+.section-label{
+  font-size:.65rem;font-weight:700;letter-spacing:2px;
+  text-transform:uppercase;color:var(--muted);
+  margin:32px 0 12px;display:flex;align-items:center;gap:8px;
+}
+.section-label::after{content:'';flex:1;height:1px;background:var(--border)}
+
+/* ══════════════════════════════════════════════════════════════
+   SENSOR CARDS GRID
+══════════════════════════════════════════════════════════════ */
+.cards-grid{
+  display:grid;
+  grid-template-columns:repeat(4,1fr);
+  gap:14px;
+}
+@media(max-width:1100px){.cards-grid{grid-template-columns:repeat(2,1fr)}}
+@media(max-width:560px){.cards-grid{grid-template-columns:1fr}}
+
+.card{
+  background:var(--card-bg);
+  border:1px solid var(--border);border-radius:var(--r);
+  padding:20px 18px 16px;
+  position:relative;overflow:hidden;
+  transition:border-color .3s,box-shadow .3s;
+}
+.card::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;border-radius:var(--r) var(--r) 0 0}
+.card.temp::before{background:linear-gradient(90deg,#ef5350,#ff8a65)}
+.card.hum::before{background:linear-gradient(90deg,#42a5f5,#26c6da)}
+.card.moist::before{background:linear-gradient(90deg,#4caf50,#26c6da)}
+.card.pump::before{background:linear-gradient(90deg,#ffd54f,#ff8a65)}
+.card.pump.on{border-color:rgba(76,175,80,.5);box-shadow:0 0 30px rgba(76,175,80,.15);background:linear-gradient(145deg,#091808,#0f2210)}
+
+.card-icon{font-size:1.4rem;margin-bottom:6px;display:block}
+.card-label{font-size:.62rem;font-weight:700;letter-spacing:1.5px;
+            text-transform:uppercase;color:var(--muted);margin-bottom:10px}
+.card-value{font-size:2.6rem;font-weight:800;line-height:1;
+            font-variant-numeric:tabular-nums}
+.card-unit{font-size:.75rem;color:var(--muted);margin-top:4px}
+.card.temp  .card-value{color:var(--red)}
+.card.hum   .card-value{color:var(--blue)}
+.card.moist .card-value{color:var(--accent)}
+.card.pump  .card-value{color:var(--yellow)}
+.card.pump.on .card-value{color:var(--accent)}
+
+/* Bar */
+.bar-wrap{margin-top:12px;background:rgba(255,255,255,.06);border-radius:4px;height:5px;overflow:hidden}
+.bar-fill{height:100%;border-radius:4px;transition:width .8s cubic-bezier(.4,0,.2,1)}
+.temp .bar-fill{background:linear-gradient(90deg,#ef5350,#ff8a65)}
+.hum  .bar-fill{background:linear-gradient(90deg,#42a5f5,#26c6da)}
+
+/* Moisture threshold bar */
+.threshold-wrap{margin-top:12px}
+.t-track{position:relative;background:rgba(255,255,255,.06);border-radius:4px;height:5px}
+.t-fill{height:100%;border-radius:4px;transition:width .8s cubic-bezier(.4,0,.2,1)}
+.t-marker{position:absolute;top:-4px;width:2px;height:13px;border-radius:1px}
+.t-labels{font-size:.58rem;color:var(--muted);display:flex;
+          justify-content:space-between;margin-top:4px}
+.moist-status{font-size:.65rem;font-weight:700;margin-left:6px}
+.moist-status.ok{color:var(--accent)}.moist-status.low{color:var(--red)}.moist-status.wet{color:var(--blue)}
+
+/* Pump sub text */
+.pump-sub{font-size:.7rem;color:var(--muted);margin-top:4px}
+
+/* ══════════════════════════════════════════════════════════════
+   CONTROLLER INTERFACE + STATS
+══════════════════════════════════════════════════════════════ */
+.ctrl-stats-grid{display:grid;grid-template-columns:280px 1fr;gap:14px;align-items:start}
+@media(max-width:860px){.ctrl-stats-grid{grid-template-columns:1fr}}
+
+/* OLED */
+.oled-frame{
+  background:#000;border:3px solid #1a2e1a;border-radius:10px;
+  padding:12px 14px;font-family:'Courier New',monospace;color:#fff;
+  box-shadow:0 0 30px rgba(76,175,80,.2),inset 0 0 20px rgba(0,0,0,.5);
+}
+.oled-title{
+  background:#fff;color:#000;text-align:center;
+  font-weight:700;font-size:.8rem;letter-spacing:3px;
+  padding:2px 4px;margin-bottom:8px;border-radius:2px;
+}
+.oled-row{display:flex;justify-content:space-between;font-size:.76rem;
+          padding:2px 0;border-bottom:1px solid #111;color:#ccc}
+.oled-row .val{color:#4caf50;font-weight:700}
+.oled-pump{
+  margin-top:8px;text-align:center;font-size:.72rem;
+  padding:3px;border-radius:3px;background:#111;color:#666;
+  letter-spacing:1px;transition:all .3s;
+}
+.oled-pump.on{background:#fff;color:#000;font-weight:700;
+              box-shadow:0 0 12px rgba(255,255,255,.3)}
+.oled-time{font-size:.6rem;text-align:right;color:#333;margin-top:6px}
+
+/* Stats cards */
+.stats-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
+@media(max-width:600px){.stats-grid{grid-template-columns:1fr}}
+
+.stat-card{
+  background:var(--card-bg);border:1px solid var(--border);
+  border-radius:var(--r);padding:18px 16px;
+  position:relative;overflow:hidden;
+}
+.stat-card::after{
+  content:'';position:absolute;bottom:0;left:0;right:0;height:2px;
+}
+.stat-card.runtime::after{background:var(--accent)}
+.stat-card.cycles::after{background:var(--blue)}
+.stat-card.water::after{background:var(--teal)}
+
+.stat-icon{font-size:1.3rem;margin-bottom:6px}
+.stat-label{font-size:.6rem;font-weight:700;letter-spacing:1.5px;
+            text-transform:uppercase;color:var(--muted);margin-bottom:6px}
+.stat-value{font-size:1.8rem;font-weight:800;color:var(--text);
+            font-variant-numeric:tabular-nums;line-height:1}
+.stat-sub{font-size:.7rem;color:var(--muted);margin-top:3px}
+
+.reset-row{display:flex;justify-content:flex-end;margin-top:10px}
+.reset-btn{
+  background:none;border:1px solid rgba(239,83,80,.4);
+  border-radius:6px;padding:5px 12px;font-size:.7rem;
+  color:var(--red);cursor:pointer;transition:all .2s;
+}
+.reset-btn:hover{background:rgba(239,83,80,.1)}
+
+/* ══════════════════════════════════════════════════════════════
+   CHARTS
+══════════════════════════════════════════════════════════════ */
+.charts-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+@media(max-width:860px){.charts-grid{grid-template-columns:1fr}}
+
+.chart-card{
+  background:var(--card-bg);border:1px solid var(--border);
+  border-radius:var(--r);padding:20px;position:relative;
+}
+.chart-header{display:flex;align-items:flex-start;
+              justify-content:space-between;margin-bottom:16px;flex-wrap:wrap;gap:8px}
+.chart-title{font-size:.78rem;font-weight:700;color:var(--text)}
+.chart-meta{font-size:.65rem;color:var(--muted);
+            background:var(--surf2);border:1px solid var(--border);
+            border-radius:6px;padding:3px 8px;white-space:nowrap}
+
+.range-tabs{display:flex;gap:3px;background:rgba(0,0,0,.3);
+            border-radius:8px;padding:3px}
+.range-tab{
+  background:none;border:none;padding:4px 10px;border-radius:6px;
+  font-size:.68rem;font-weight:600;color:var(--muted);cursor:pointer;
+  transition:all .2s;white-space:nowrap;
+}
+.range-tab.active{background:var(--dk);color:var(--accent)}
+canvas{display:block;width:100%!important}
+
+/* ══════════════════════════════════════════════════════════════
+   SCROLLBAR
+══════════════════════════════════════════════════════════════ */
+::-webkit-scrollbar{width:6px;height:6px}
+::-webkit-scrollbar-track{background:var(--surf)}
+::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px}
+::-webkit-scrollbar-thumb:hover{background:var(--muted)}
+</style>
+</head>
+<body>
+
+<!-- ══ NAV ══════════════════════════════════════════════════════ -->
+<nav>
+  <a class="nav-logo" href="/">
+    <span class="leaf">🌱</span>
+    <div class="brand">
+      <span class="brand-name">PlantIoT</span>
+      <span class="brand-sub">Watering System</span>
+    </div>
+  </a>
+
+  <div class="nav-links" id="navLinks">
+    <a class="nav-link active" href="/"><span class="ni">📊</span> Dashboard</a>
+    <a class="nav-link" href="/portal"><span class="ni">📁</span> Logs &amp; Reports</a>
+  </div>
+
+  <div class="nav-right">
+    <div class="live-pill">
+      <div class="live-dot" id="liveDot"></div>
+      <span id="liveLabel">LIVE</span>
+    </div>
+    <div class="last-update-badge">
+      <span>⟳</span>
+      <span class="ts" id="lastTs">—</span>
+    </div>
+    <a class="portal-btn" href="/portal">🔐 Portal</a>
+    <button class="hamburger" onclick="toggleNav()" aria-label="Menu">☰</button>
+  </div>
+</nav>
+
+<!-- ══ PAGE ═════════════════════════════════════════════════════ -->
+<div class="page">
+
+  <!-- SENSOR CARDS -->
+  <div class="section-label">Live Sensor Readings</div>
+  <div class="cards-grid">
+
+    <div class="card temp">
+      <span class="card-icon">🌡️</span>
+      <div class="card-label">Temperature</div>
+      <div class="card-value" id="cTemp">--</div>
+      <div class="card-unit">°C</div>
+      <div class="bar-wrap"><div class="bar-fill" id="barTemp" style="width:0%"></div></div>
+    </div>
+
+    <div class="card hum">
+      <span class="card-icon">💧</span>
+      <div class="card-label">Humidity</div>
+      <div class="card-value" id="cHum">--</div>
+      <div class="card-unit">% RH</div>
+      <div class="bar-wrap"><div class="bar-fill" id="barHum" style="width:0%"></div></div>
+    </div>
+
+    <div class="card moist">
+      <span class="card-icon">🌱</span>
+      <div class="card-label">Soil Moisture <span class="moist-status" id="moistStatus"></span></div>
+      <div class="card-value" id="cMoist">--</div>
+      <div class="card-unit">%</div>
+      <div class="threshold-wrap">
+        <div class="t-track">
+          <div class="t-fill" id="tFill" style="width:0%"></div>
+          <div class="t-marker" style="left:30%;background:var(--red)" title="Pump ON (30%)"></div>
+          <div class="t-marker" style="left:70%;background:var(--blue)" title="Pump OFF (70%)"></div>
+        </div>
+        <div class="t-labels"><span>0%</span><span>▴30%</span><span>▴70%</span><span>100%</span></div>
+      </div>
+    </div>
+
+    <div class="card pump" id="pumpCard">
+      <span class="card-icon">⚙️</span>
+      <div class="card-label">Motor Pump</div>
+      <div class="card-value" id="cPump">--</div>
+      <div class="pump-sub" id="pumpSub">—</div>
+    </div>
+
+  </div>
+
+  <!-- CONTROLLER INTERFACE + STATS -->
+  <div class="section-label">Controller Interface</div>
+  <div class="ctrl-stats-grid">
+
+    <!-- OLED preview -->
+    <div class="oled-frame">
+      <div class="oled-title">PLANT MONITOR</div>
+      <div class="oled-row"><span>TEMP:</span>    <span class="val" id="oTemp">-- °C</span></div>
+      <div class="oled-row"><span>HUMIDITY:</span><span class="val" id="oHum">-- %</span></div>
+      <div class="oled-row"><span>MOISTURE:</span><span class="val" id="oMoist">-- %</span></div>
+      <div class="oled-pump" id="oPump">PUMP: OFF  STANDBY</div>
+      <div class="oled-time" id="oTime">--:--:--</div>
+    </div>
+
+    <!-- Stats -->
+    <div>
+      <div class="stats-grid">
+
+        <div class="stat-card runtime">
+          <div class="stat-icon">⏱</div>
+          <div class="stat-label">Today Pump Runtime</div>
+          <div class="stat-value" id="sRuntime">-- min</div>
+          <div class="stat-sub" id="sRuntimeS">-- seconds</div>
+        </div>
+
+        <div class="stat-card cycles">
+          <div class="stat-icon">🔄</div>
+          <div class="stat-label">Today Watering Cycles</div>
+          <div class="stat-value" id="sCycles">--</div>
+          <div class="stat-sub">completed events</div>
+        </div>
+
+        <div class="stat-card water">
+          <div class="stat-icon">💦</div>
+          <div class="stat-label">Today Water Used</div>
+          <div class="stat-value" id="sWater">-- ml</div>
+          <div class="stat-sub" id="sWaterL">-- L total</div>
+        </div>
+
+      </div>
+      <div class="reset-row">
+        <button class="reset-btn" onclick="confirmReset()">↺ Reset Today's Counters</button>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- CHARTS -->
+  <div class="section-label">Sensor History</div>
+  <div class="charts-grid">
+
+    <!-- Chart 1: Temp & Humidity -->
+    <div class="chart-card">
+      <div class="chart-header">
+        <div>
+          <div class="chart-title">🌡️ Temperature (°C) &amp; 💧 Humidity (%)</div>
+        </div>
+        <div style="display:flex;flex-direction:column;align-items:flex-end;gap:6px">
+          <div class="chart-meta" id="chartTHMeta">—</div>
+          <div class="range-tabs">
+            <button class="range-tab active" onclick="setRange('th',1,'1h')">1h</button>
+            <button class="range-tab" onclick="setRange('th',24,'1d')">1d</button>
+            <button class="range-tab" onclick="setRange('th',168,'1w')">1w</button>
+          </div>
+        </div>
+      </div>
+      <canvas id="chartTH" height="160"></canvas>
+    </div>
+
+    <!-- Chart 2: Moisture & Pump -->
+    <div class="chart-card">
+      <div class="chart-header">
+        <div>
+          <div class="chart-title">🌱 Soil Moisture (%) &amp; ⚙️ Pump State</div>
+        </div>
+        <div style="display:flex;flex-direction:column;align-items:flex-end;gap:6px">
+          <div class="chart-meta" id="chartMPMeta">—</div>
+          <div class="range-tabs">
+            <button class="range-tab active" onclick="setRange('mp',1,'1h')">1h</button>
+            <button class="range-tab" onclick="setRange('mp',24,'1d')">1d</button>
+            <button class="range-tab" onclick="setRange('mp',168,'1w')">1w</button>
+          </div>
+        </div>
+      </div>
+      <canvas id="chartMP" height="160"></canvas>
+    </div>
+
+  </div>
+</div><!-- /page -->
+
+<script>
+// ══════════════════════════════════════════════════════════════
+//  UTILITIES
+// ══════════════════════════════════════════════════════════════
+function toggleNav(){document.getElementById('navLinks').classList.toggle('open')}
+
+function fmtDateTime(isoStr){
+  if(!isoStr) return '—';
+  const d=new Date(isoStr.replace(' ','T'));
+  if(isNaN(d)) return isoStr;
+  const pad=n=>String(n).padStart(2,'0');
+  return `${pad(d.getDate())}-${pad(d.getMonth()+1)}-${d.getFullYear()} `+
+         `${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
+}
+
+// Live clock in OLED
+function tickClock(){
+  const now=new Date();
+  const p=n=>String(n).padStart(2,'0');
+  document.getElementById('oTime').textContent=
+    p(now.getHours())+':'+p(now.getMinutes())+':'+p(now.getSeconds());
+}
+setInterval(tickClock,1000);tickClock();
+
+// ══════════════════════════════════════════════════════════════
+//  SSE — LIVE DATA
+// ══════════════════════════════════════════════════════════════
+const evtSrc = new EventSource('/api/stream');
+
+evtSrc.onopen  = ()=>setLive(true);
+evtSrc.onerror = ()=>setLive(false);
+
+function setLive(ok){
+  document.getElementById('liveDot').className   = 'live-dot'+(ok?'':' offline');
+  document.getElementById('liveLabel').textContent= ok?'LIVE':'OFFLINE';
+}
+
+evtSrc.onmessage = e=>{
+  const d=JSON.parse(e.data);
+  if(!d.timestamp) return;
+
+  // sensor cards
+  const temp  = d.temperature!=null ? d.temperature.toFixed(1) : '--';
+  const hum   = d.humidity   !=null ? Math.round(d.humidity)   : '--';
+  const moist = d.moisture   !=null ? d.moisture                : '--';
+  const pOn   = d.pump_state === 1;
+
+  document.getElementById('cTemp').textContent  = temp;
+  document.getElementById('cHum').textContent   = hum;
+  document.getElementById('cMoist').textContent = moist;
+  document.getElementById('cPump').textContent  = pOn?'ON':'OFF';
+  document.getElementById('pumpSub').textContent= pOn?'Watering plant…':'Standby';
+
+  // bars
+  const tPct = d.temperature!=null ? Math.min(100,Math.max(0,((d.temperature-10)/40)*100)) : 0;
+  const hPct = d.humidity   !=null ? Math.min(100,Math.max(0,d.humidity))                  : 0;
+  const mPct = d.moisture   !=null ? Math.min(100,Math.max(0,d.moisture))                  : 0;
+  document.getElementById('barTemp').style.width = tPct+'%';
+  document.getElementById('barHum').style.width  = hPct+'%';
+  document.getElementById('tFill').style.width   = mPct+'%';
+  document.getElementById('tFill').style.background =
+    moist<30?'var(--red)':moist<70?'var(--yellow)':'var(--accent)';
+
+  // moisture status label
+  const ms=document.getElementById('moistStatus');
+  if(d.moisture<30){ms.textContent='DRY';ms.className='moist-status low'}
+  else if(d.moisture<70){ms.textContent='OK';ms.className='moist-status ok'}
+  else{ms.textContent='WET';ms.className='moist-status wet'}
+
+  // pump card
+  document.getElementById('pumpCard').className='card pump'+(pOn?' on':'');
+
+  // OLED
+  document.getElementById('oTemp').textContent  = temp+' °C';
+  document.getElementById('oHum').textContent   = hum+' %';
+  document.getElementById('oMoist').textContent = moist+' %';
+  const op=document.getElementById('oPump');
+  op.textContent='PUMP: '+(pOn?'ON   WATERING':'OFF  STANDBY');
+  op.className='oled-pump'+(pOn?' on':'');
+
+  // stats
+  if(d.today_total_s!=null){
+    const min=d.today_total_min;
+    document.getElementById('sRuntime').textContent = min+' min';
+    document.getElementById('sRuntimeS').textContent= d.today_total_s+' seconds';
+    document.getElementById('sCycles').textContent  = d.today_cycles??'--';
+    document.getElementById('sWater').textContent   = (d.today_water_ml??0)+' ml';
+    const L=((d.today_water_ml??0)/1000).toFixed(2);
+    document.getElementById('sWaterL').textContent  = L+' L total';
+  }
+
+  // last update
+  document.getElementById('lastTs').textContent = fmtDateTime(d.timestamp);
+};
+
+// ══════════════════════════════════════════════════════════════
+//  CHARTS
+// ══════════════════════════════════════════════════════════════
+Chart.defaults.color       = '#6b8f71';
+Chart.defaults.borderColor = '#1e3322';
+Chart.defaults.font.family = "'Segoe UI',system-ui,sans-serif";
+
+let chartTH, chartMP;
+let rangeTH={hours:1,label:'1h'};
+let rangeMP={hours:1,label:'1h'};
+
+function metaLabel(hours, rows){
+  const now=new Date();
+  if(hours===1){
+    return now.toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'})+
+           ' '+now.toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'});
+  } else if(hours===24){
+    return now.toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'});
+  } else {
+    // week
+    const wk=new Date(now); wk.setDate(wk.getDate()-7);
+    return wk.toLocaleDateString('en-GB',{month:'short',year:'numeric'})+'–'+
+           now.toLocaleDateString('en-GB',{month:'short',year:'numeric'});
+  }
+}
+
+function xLabel(ts, hours){
+  const d=new Date(ts.replace(' ','T'));
+  if(isNaN(d)) return ts;
+  const p=n=>String(n).padStart(2,'0');
+  if(hours===1)  return p(d.getMinutes())+':'+p(d.getSeconds());   // mm:ss
+  if(hours===24) return p(d.getHours())+':'+p(d.getMinutes());     // hh:mm
+  return p(d.getDate())+'-'+p(d.getMonth()+1);                     // dd-mm
+}
+
+function dynamicYAxis(vals){
+  const v=vals.filter(x=>x!=null&&!isNaN(x));
+  if(!v.length) return {min:0,max:100};
+  const mn=Math.min(...v), mx=Math.max(...v);
+  const pad=Math.max((mx-mn)*0.18, 2);
+  return {min:+(mn-pad).toFixed(1), max:+(mx+pad).toFixed(1)};
+}
+
+function chartOpts(yRanges){
+  return {
+    responsive:true, animation:{duration:600},
+    interaction:{mode:'index',intersect:false},
+    plugins:{
+      legend:{labels:{boxWidth:10,padding:14,color:'#a5c8a8'}},
+      tooltip:{
+        backgroundColor:'rgba(8,14,10,.96)',
+        borderColor:'#1e3322',borderWidth:1,
+        titleColor:'#a5c8a8',bodyColor:'#e8f5e9',
+        padding:10,cornerRadius:8,
+      }
+    },
+    scales:{
+      x:{ticks:{color:'#6b8f71',maxTicksLimit:10,maxRotation:30},
+         grid:{color:'rgba(30,51,34,.6)'}},
+      y:{ticks:{color:'#6b8f71'},grid:{color:'rgba(30,51,34,.6)'},
+         ...yRanges},
+    }
+  };
+}
+
+function buildTHChart(rows, hours){
+  const labels = rows.map(r=>xLabel(r.timestamp, hours));
+  const temps  = rows.map(r=>r.temperature);
+  const hums   = rows.map(r=>r.humidity);
+
+  const yR = dynamicYAxis([...temps,...hums]);
+
+  if(chartTH) chartTH.destroy();
+  chartTH = new Chart(document.getElementById('chartTH'),{
+    type:'line',
+    data:{
+      labels,
+      datasets:[
+        {label:'Temp (°C)',data:temps,
+         borderColor:'#ef5350',backgroundColor:'rgba(239,83,80,.08)',
+         tension:.35,pointRadius:0,borderWidth:2,fill:true},
+        {label:'Humidity (%)',data:hums,
+         borderColor:'#42a5f5',backgroundColor:'rgba(66,165,245,.08)',
+         tension:.35,pointRadius:0,borderWidth:2,fill:true},
+      ]
+    },
+    options:chartOpts(yR)
+  });
+}
+
+function buildMPChart(rows, hours){
+  const labels = rows.map(r=>xLabel(r.timestamp, hours));
+  const moists = rows.map(r=>r.moisture);
+  const pumps  = rows.map(r=>r.pump_state*100);
+
+  const yR = dynamicYAxis([...moists]);
+
+  if(chartMP) chartMP.destroy();
+  chartMP = new Chart(document.getElementById('chartMP'),{
+    type:'line',
+    data:{
+      labels,
+      datasets:[
+        {label:'Moisture (%)',data:moists,
+         borderColor:'#4caf50',backgroundColor:'rgba(76,175,80,.08)',
+         tension:.35,pointRadius:0,borderWidth:2,fill:true},
+        {label:'Pump (×100)',data:pumps,
+         borderColor:'#ffd54f',backgroundColor:'rgba(255,213,79,.07)',
+         tension:0,pointRadius:0,borderWidth:1.5,
+         stepped:'before',fill:false},
+      ]
+    },
+    options:chartOpts(dynamicYAxis([...moists,0,100]))
+  });
+}
+
+async function loadChart(which, hours, label){
+  try{
+    const r = await fetch('/api/history/'+hours);
+    const rows = await r.json();
+    const meta = metaLabel(hours, rows);
+
+    if(which==='th'||which==='all'){
+      document.getElementById('chartTHMeta').textContent = meta;
+      buildTHChart(rows, hours);
+    }
+    if(which==='mp'||which==='all'){
+      document.getElementById('chartMPMeta').textContent = meta;
+      buildMPChart(rows, hours);
+    }
+  }catch(e){console.warn('Chart load error',e)}
+}
+
+function setRange(which, hours, label){
+  const btnClass = which==='th'?'chartTH':'chartMP';
+  const parentCard = document.getElementById('chart'+which.toUpperCase());
+  // update tab states
+  const tabs = (which==='th'?document.querySelectorAll('#chartTH').item(0):
+                              document.querySelectorAll('#chartMP').item(0));
+  // find all range-tabs in same chart card and update
+  event.target.closest('.range-tabs').querySelectorAll('.range-tab')
+       .forEach(b=>b.classList.remove('active'));
+  event.target.classList.add('active');
+
+  if(which==='th') rangeTH={hours,label};
+  else             rangeMP={hours,label};
+  loadChart(which, hours, label);
+}
+
+// Init
+loadChart('all', 1, '1h');
+setInterval(()=>{ loadChart('th',rangeTH.hours,rangeTH.label);
+                  loadChart('mp',rangeMP.hours,rangeMP.label); }, 30000);
+
+// ══════════════════════════════════════════════════════════════
+//  RESET
+// ══════════════════════════════════════════════════════════════
+async function confirmReset(){
+  if(!confirm('Reset today\'s pump runtime, watering cycles and water counter?\n\nThis requires portal login.')) return;
+  // Redirect to portal if not logged in
+  window.location.href='/portal';
+}
+</script>
+</body>
+</html>
