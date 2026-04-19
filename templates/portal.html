@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>PlantIoT — Portal Login</title>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#080e0a;--surf:#0f1a11;--surf2:#152019;--border:#1e3322;
+  --text:#e8f5e9;--muted:#6b8f71;--accent:#4caf50;--dk:#1b5e20;
+  --red:#ef5350;--r:12px;
+}
+body{font-family:'Segoe UI',system-ui,sans-serif;background:var(--bg);
+     color:var(--text);min-height:100vh;display:flex;flex-direction:column;
+     align-items:center;justify-content:center;padding:20px}
+
+.card{
+  width:100%;max-width:400px;
+  background:linear-gradient(145deg,#0f1a11,#122016);
+  border:1px solid var(--border);border-radius:var(--r);
+  padding:40px 36px;
+  box-shadow:0 24px 80px rgba(0,0,0,.5),0 0 40px rgba(76,175,80,.08);
+}
+.logo{text-align:center;margin-bottom:28px}
+.logo .leaf{font-size:3rem;display:block;animation:sway 3s ease-in-out infinite}
+@keyframes sway{0%,100%{transform:rotate(-6deg)}50%{transform:rotate(6deg)}}
+.logo h1{font-size:1.4rem;color:var(--accent);font-weight:700;margin-top:8px}
+.logo p{font-size:.72rem;color:var(--muted);letter-spacing:1px;text-transform:uppercase;margin-top:4px}
+
+.form-group{margin-bottom:18px}
+label{display:block;font-size:.72rem;font-weight:700;letter-spacing:1px;
+      text-transform:uppercase;color:var(--muted);margin-bottom:7px}
+input{
+  width:100%;padding:11px 14px;
+  background:rgba(0,0,0,.4);border:1px solid var(--border);
+  border-radius:8px;color:var(--text);font-size:.9rem;
+  transition:border-color .2s,box-shadow .2s;outline:none;
+}
+input:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(76,175,80,.12)}
+
+.btn{
+  width:100%;padding:13px;margin-top:8px;
+  background:linear-gradient(135deg,var(--dk),var(--accent));
+  border:none;border-radius:8px;color:#fff;
+  font-size:.9rem;font-weight:700;cursor:pointer;
+  transition:opacity .2s,transform .1s;letter-spacing:.5px;
+}
+.btn:hover{opacity:.9}.btn:active{transform:scale(.98)}
+
+.error{
+  background:rgba(239,83,80,.12);border:1px solid rgba(239,83,80,.35);
+  border-radius:8px;padding:10px 14px;margin-bottom:16px;
+  font-size:.8rem;color:var(--red);
+}
+
+.back{
+  display:block;text-align:center;margin-top:20px;
+  font-size:.75rem;color:var(--muted);text-decoration:none;
+  transition:color .2s;
+}
+.back:hover{color:var(--accent)}
+
+.badge{
+  display:flex;align-items:center;justify-content:center;gap:8px;
+  background:rgba(76,175,80,.06);border:1px solid rgba(76,175,80,.2);
+  border-radius:8px;padding:8px 14px;margin-bottom:24px;
+  font-size:.72rem;color:var(--muted);
+}
+.badge .dot{width:6px;height:6px;border-radius:50%;background:var(--accent);
+            box-shadow:0 0 6px var(--accent)}
+</style>
+</head>
+<body>
+<div class="card">
+  <div class="logo">
+    <span class="leaf">🌱</span>
+    <h1>PlantIoT Portal</h1>
+    <p>Logs &amp; Reports Access</p>
+  </div>
+
+  <div class="badge">
+    <div class="dot"></div>
+    Secure authenticated access
+  </div>
+
+  {% if error %}
+  <div class="error">⚠️ {{ error }}</div>
+  {% endif %}
+
+  <form method="POST" action="/portal/login">
+    <div class="form-group">
+      <label for="username">Username</label>
+      <input type="text" id="username" name="username"
+             placeholder="Enter username" autocomplete="username" required/>
+    </div>
+    <div class="form-group">
+      <label for="password">Password</label>
+      <input type="password" id="password" name="password"
+             placeholder="Enter password" autocomplete="current-password" required/>
+    </div>
+    <button class="btn" type="submit">🔐 Sign In</button>
+  </form>
+
+  <a class="back" href="/">← Back to Dashboard</a>
+</div>
+</body>
+</html>
