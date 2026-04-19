@@ -1,0 +1,350 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>PlantIoT — Download Portal</title>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#080e0a;--surf:#0f1a11;--surf2:#152019;--border:#1e3322;
+  --text:#e8f5e9;--muted:#6b8f71;--accent:#4caf50;--dk:#1b5e20;
+  --blue:#42a5f5;--red:#ef5350;--yellow:#ffd54f;--r:12px;--r-sm:8px;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Segoe UI',system-ui,sans-serif;background:var(--bg);
+     color:var(--text);min-height:100vh}
+
+/* Nav */
+nav{
+  background:rgba(8,14,10,.95);backdrop-filter:blur(16px);
+  border-bottom:1px solid var(--border);
+  padding:0 24px;height:60px;display:flex;align-items:center;gap:16px;
+  position:sticky;top:0;z-index:100;
+}
+.nav-logo{display:flex;align-items:center;gap:10px;text-decoration:none}
+.nav-logo .leaf{font-size:1.5rem}
+.nav-logo .name{font-size:1rem;font-weight:700;color:var(--accent)}
+.user-badge{margin-left:auto;display:flex;align-items:center;gap:10px;
+            font-size:.78rem;color:var(--muted)}
+.logout-btn{
+  background:none;border:1px solid var(--border);border-radius:6px;
+  padding:5px 12px;color:var(--muted);font-size:.72rem;cursor:pointer;
+  transition:all .2s;text-decoration:none;
+}
+.logout-btn:hover{border-color:var(--red);color:var(--red)}
+.back-dash{
+  display:flex;align-items:center;gap:6px;
+  background:rgba(76,175,80,.08);border:1px solid rgba(76,175,80,.2);
+  border-radius:6px;padding:5px 12px;color:var(--accent);
+  font-size:.72rem;text-decoration:none;transition:all .2s;
+}
+.back-dash:hover{background:rgba(76,175,80,.15)}
+
+/* Page */
+.page{max-width:1100px;margin:0 auto;padding:32px 20px 60px}
+.page-title{font-size:1.5rem;font-weight:800;color:var(--accent);margin-bottom:6px}
+.page-sub{font-size:.8rem;color:var(--muted);margin-bottom:28px}
+
+/* Tabs */
+.tabs{display:flex;gap:4px;margin-bottom:24px;background:rgba(0,0,0,.3);
+      border-radius:10px;padding:4px;width:fit-content}
+.tab{
+  padding:8px 20px;border:none;border-radius:8px;
+  font-size:.8rem;font-weight:600;color:var(--muted);
+  cursor:pointer;background:none;transition:all .2s;
+}
+.tab.active{background:var(--dk);color:var(--accent)}
+.tab-panel{display:none}.tab-panel.active{display:block}
+
+/* Cards */
+.dl-card{
+  background:linear-gradient(145deg,#0f1a11,#122016);
+  border:1px solid var(--border);border-radius:var(--r);
+  padding:28px;margin-bottom:16px;
+}
+.dl-card h3{font-size:1rem;font-weight:700;margin-bottom:6px;
+            display:flex;align-items:center;gap:8px}
+.dl-card p{font-size:.78rem;color:var(--muted);margin-bottom:20px;line-height:1.5}
+
+/* Form controls */
+.form-row{display:flex;flex-wrap:wrap;gap:14px;align-items:flex-end}
+.form-group{display:flex;flex-direction:column;gap:6px}
+label{font-size:.65rem;font-weight:700;letter-spacing:1px;
+      text-transform:uppercase;color:var(--muted)}
+input[type=date],input[type=number],select{
+  padding:9px 12px;background:rgba(0,0,0,.4);
+  border:1px solid var(--border);border-radius:8px;
+  color:var(--text);font-size:.85rem;outline:none;
+  transition:border-color .2s;min-width:140px;
+}
+input[type=date]:focus,input[type=number]:focus,select:focus{border-color:var(--accent)}
+select option{background:#0f1a11}
+
+/* Buttons */
+.dl-btn{
+  display:flex;align-items:center;gap:8px;
+  padding:10px 20px;border:none;border-radius:8px;
+  font-size:.82rem;font-weight:700;cursor:pointer;
+  transition:opacity .2s,transform .1s;
+}
+.dl-btn:active{transform:scale(.97)}
+.dl-btn.csv{background:linear-gradient(135deg,#1b5e20,#43a047);color:#fff}
+.dl-btn.pdf{background:linear-gradient(135deg,#0d47a1,#1976d2);color:#fff}
+.dl-btn:hover{opacity:.88}
+.dl-btn:disabled{opacity:.4;cursor:not-allowed}
+
+/* Reset section */
+.reset-card{
+  background:rgba(239,83,80,.04);border:1px solid rgba(239,83,80,.2);
+  border-radius:var(--r);padding:24px;
+}
+.reset-card h3{color:var(--red);margin-bottom:6px;display:flex;align-items:center;gap:8px}
+.reset-card p{font-size:.78rem;color:var(--muted);margin-bottom:16px;line-height:1.5}
+.reset-confirm-btn{
+  background:none;border:1px solid var(--red);border-radius:8px;
+  padding:9px 20px;color:var(--red);font-size:.82rem;font-weight:700;
+  cursor:pointer;transition:all .2s;
+}
+.reset-confirm-btn:hover{background:rgba(239,83,80,.1)}
+
+/* Toast */
+.toast{
+  position:fixed;bottom:24px;right:24px;
+  background:#152019;border:1px solid var(--accent);
+  border-radius:10px;padding:14px 20px;
+  font-size:.82rem;color:var(--text);
+  box-shadow:0 8px 32px rgba(0,0,0,.5);
+  transform:translateY(80px);opacity:0;
+  transition:all .35s cubic-bezier(.4,0,.2,1);
+  max-width:320px;z-index:999;
+}
+.toast.show{transform:translateY(0);opacity:1}
+.toast.error{border-color:var(--red);background:rgba(239,83,80,.08)}
+
+/* Info box */
+.info{background:rgba(66,165,245,.06);border:1px solid rgba(66,165,245,.2);
+      border-radius:8px;padding:12px 16px;font-size:.76rem;color:var(--muted);
+      line-height:1.5;margin-bottom:16px}
+</style>
+</head>
+<body>
+
+<nav>
+  <a class="nav-logo" href="/">
+    <span class="leaf">🌱</span>
+    <span class="name">PlantIoT Portal</span>
+  </a>
+  <a class="back-dash" href="/">← Dashboard</a>
+  <div class="user-badge">
+    👤 {{ username }}
+    <a class="logout-btn" href="/portal/logout">Sign Out</a>
+  </div>
+</nav>
+
+<div class="page">
+  <div class="page-title">📁 Logs &amp; Reports</div>
+  <div class="page-sub">Download CSV data logs or generate PDF monitoring reports. All data is filtered by date.</div>
+
+  <!-- Tabs -->
+  <div class="tabs">
+    <button class="tab active" onclick="switchTab('log')">📄 CSV Data Logs</button>
+    <button class="tab"        onclick="switchTab('report')">📊 PDF Reports</button>
+    <button class="tab"        onclick="switchTab('admin')">⚙️ Admin</button>
+  </div>
+
+  <!-- ── CSV Log Tab ─────────────────────────────────────────── -->
+  <div class="tab-panel active" id="tab-log">
+    <div class="dl-card">
+      <h3>📄 Daily CSV Data Log</h3>
+      <p>
+        Download the raw sensor data log for a specific date.<br/>
+        File: <code>Plant_IoT_DDMMYYYY.csv</code> — contains one row per minute with all sensor readings.
+      </p>
+      <div class="info">
+        CSV columns: Date, Time, Temperature_C, Humidity_pct, Moisture_pct, Motor_Status,
+        Amt_Water_Pumped_ml, Time_Operated_s, Operational_Mode, Connection_Status
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>Select Date</label>
+          <input type="date" id="logDate"/>
+        </div>
+        <button class="dl-btn csv" onclick="download('log')">
+          ⬇ Download CSV
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Report Tab ──────────────────────────────────────────── -->
+  <div class="tab-panel" id="tab-report">
+
+    <div class="dl-card">
+      <h3>📅 Daily Report</h3>
+      <p>Full PDF monitoring report for one day.<br/>File: <code>Monitoring_Report_DDMMYYYY.pdf</code></p>
+      <div class="form-row">
+        <div class="form-group">
+          <label>Select Date</label>
+          <input type="date" id="rptDailyDate"/>
+        </div>
+        <button class="dl-btn pdf" onclick="download('report','daily')">
+          ⬇ Generate &amp; Download PDF
+        </button>
+      </div>
+    </div>
+
+    <div class="dl-card">
+      <h3>📆 Monthly Report</h3>
+      <p>Aggregated report for an entire month.<br/>File: <code>Monitoring_Report_MMYYYY.pdf</code></p>
+      <div class="form-row">
+        <div class="form-group">
+          <label>Month</label>
+          <select id="rptMonth">
+            <option value="1">January</option><option value="2">February</option>
+            <option value="3">March</option><option value="4">April</option>
+            <option value="5">May</option><option value="6">June</option>
+            <option value="7">July</option><option value="8">August</option>
+            <option value="9">September</option><option value="10">October</option>
+            <option value="11">November</option><option value="12">December</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Year</label>
+          <input type="number" id="rptMonthYear" min="2024" max="2099" value="2026" style="width:100px"/>
+        </div>
+        <button class="dl-btn pdf" onclick="download('report','monthly')">
+          ⬇ Generate &amp; Download PDF
+        </button>
+      </div>
+    </div>
+
+    <div class="dl-card">
+      <h3>📊 Yearly Report</h3>
+      <p>Annual consolidated report.<br/>File: <code>Monitoring_Report_YYYY.pdf</code></p>
+      <div class="form-row">
+        <div class="form-group">
+          <label>Year</label>
+          <input type="number" id="rptYear" min="2024" max="2099" value="2026" style="width:100px"/>
+        </div>
+        <button class="dl-btn pdf" onclick="download('report','yearly')">
+          ⬇ Generate &amp; Download PDF
+        </button>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- ── Admin Tab ──────────────────────────────────────────── -->
+  <div class="tab-panel" id="tab-admin">
+    <div class="reset-card">
+      <h3>↺ Reset Today's Statistics</h3>
+      <p>
+        Resets the today's pump runtime, watering cycle count, and estimated water usage
+        counters shown on the main dashboard. <strong>Raw sensor data is never deleted.</strong><br/><br/>
+        This is logged with your username and timestamp in the database.
+      </p>
+      <button class="reset-confirm-btn" onclick="doReset()">
+        ↺ Confirm Reset Today's Counters
+      </button>
+      <div id="resetStatus" style="margin-top:12px;font-size:.78rem;color:var(--muted)"></div>
+    </div>
+  </div>
+
+</div><!-- /page -->
+
+<div class="toast" id="toast"></div>
+
+<script>
+// Set defaults
+const today = new Date().toISOString().slice(0,10);
+document.getElementById('logDate').value      = today;
+document.getElementById('rptDailyDate').value = today;
+const m = new Date().getMonth()+1;
+document.getElementById('rptMonth').value = m;
+
+function switchTab(name){
+  document.querySelectorAll('.tab').forEach((t,i)=>{
+    const names=['log','report','admin'];
+    t.classList.toggle('active', names[i]===name);
+  });
+  document.querySelectorAll('.tab-panel').forEach(p=>{
+    p.classList.toggle('active', p.id==='tab-'+name);
+  });
+}
+
+function showToast(msg, isError=false){
+  const t=document.getElementById('toast');
+  t.textContent=msg;
+  t.className='toast'+(isError?' error':'');
+  t.classList.add('show');
+  setTimeout(()=>t.classList.remove('show'),3500);
+}
+
+async function download(type, fmt){
+  let body={type};
+  if(type==='log'){
+    body.date = document.getElementById('logDate').value;
+    if(!body.date){showToast('Please select a date.',true);return}
+  } else {
+    body.format = fmt;
+    if(fmt==='daily'){
+      body.date = document.getElementById('rptDailyDate').value;
+      if(!body.date){showToast('Please select a date.',true);return}
+    } else if(fmt==='monthly'){
+      body.month = parseInt(document.getElementById('rptMonth').value);
+      body.year  = parseInt(document.getElementById('rptMonthYear').value);
+    } else if(fmt==='yearly'){
+      body.year  = parseInt(document.getElementById('rptYear').value);
+    }
+  }
+
+  showToast('⏳ Preparing download…');
+
+  try{
+    const r = await fetch('/api/portal/download',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify(body)
+    });
+
+    if(!r.ok){
+      const err=await r.json();
+      showToast('Error: '+(err.error||r.statusText), true);
+      return;
+    }
+
+    // Trigger browser download
+    const blob    = await r.blob();
+    const disp    = r.headers.get('Content-Disposition')||'';
+    const match   = disp.match(/filename="?([^"]+)"?/);
+    const fname   = match ? match[1] : 'download';
+    const url     = URL.createObjectURL(blob);
+    const a       = document.createElement('a');
+    a.href=url; a.download=fname; a.click();
+    URL.revokeObjectURL(url);
+    showToast('✅ Downloaded: '+fname);
+  } catch(e){
+    showToast('Download failed: '+e.message, true);
+  }
+}
+
+async function doReset(){
+  if(!confirm('Reset today\'s pump runtime, cycles and water counters?\n\nSensor data is NOT deleted.')) return;
+  try{
+    const r = await fetch('/api/reset/today',{method:'POST'});
+    const j = await r.json();
+    if(r.ok){
+      showToast('✅ Today\'s stats reset successfully.');
+      document.getElementById('resetStatus').textContent =
+        'Last reset: '+new Date().toLocaleString();
+    } else {
+      showToast('Error: '+(j.error||'Unknown'), true);
+    }
+  } catch(e){
+    showToast('Reset failed: '+e.message, true);
+  }
+}
+</script>
+</body>
+</html>
